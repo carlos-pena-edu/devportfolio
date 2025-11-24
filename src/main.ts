@@ -226,8 +226,6 @@ const sceneObjects: SceneObject[] = [
   { sprite: sprites.wallShelf, x: 30, y: 56 },
   { sprite: sprites.jarShelf, x: 20, y: 76 },
   { sprite: sprites.bed, x: 52, y: 92 },
-  { sprite: sprites.table, x: 96, y: 128 },
-  { sprite: sprites.lamp, x: 122, y: 108 },
   { sprite: sprites.bench, x: 76, y: 174 },
   { sprite: sprites.bench, x: 150, y: 174 },
   { sprite: sprites.chest, x: 186, y: 172 },
@@ -241,7 +239,7 @@ const hero: Hero = {
   anchor: 'bottom',
   bobAmplitude: 0.6,
   bobSpeed: 0.004,
-  speed: 0.16,
+  speed: 0.08,
   moving: false,
   radius: 3,
 }
@@ -296,48 +294,6 @@ window.addEventListener('keyup', (event) => {
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value))
 
-const getTopLeft = (object: SceneObject, sprite: Sprite) => {
-  let originX = object.x
-  let originY = object.y
-
-  if (object.anchor === 'center') {
-    originX -= sprite.width / 2
-    originY -= sprite.height / 2
-  } else if (object.anchor === 'bottom') {
-    originY -= sprite.height
-  }
-
-  return { originX, originY }
-}
-
-const solidPixels = new Set<string>()
-
-const registerCollider = (object: SceneObject) => {
-  const sprite = object.sprite
-  if (isAnimated(sprite)) return
-
-  const { originX, originY } = getTopLeft(object, sprite)
-  for (let row = 0; row < sprite.height; row += 1) {
-    const line = sprite.rows[row] ?? ''
-    for (let col = 0; col < sprite.width; col += 1) {
-      const key = line[col] ?? '.'
-      if (key === '.') continue
-      const worldX = Math.round(originX + col)
-      const worldY = Math.round(originY + row)
-      if (
-        worldX >= 0 &&
-        worldX < ROOM_WIDTH &&
-        worldY >= 0 &&
-        worldY < ROOM_HEIGHT
-      ) {
-        solidPixels.add(`${worldX}|${worldY}`)
-      }
-    }
-  }
-}
-
-sceneObjects.forEach(registerCollider)
-
 const heroBounds = {
   minX: 20,
   maxX: 236,
@@ -345,25 +301,7 @@ const heroBounds = {
   maxY: 210,
 }
 
-const collides = (x: number, y: number) => {
-  const samples = [
-    [0, 0],
-    [hero.radius, 0],
-    [-hero.radius, 0],
-    [0, hero.radius],
-    [0, -hero.radius],
-    [hero.radius * 0.7, hero.radius * 0.7],
-    [-hero.radius * 0.7, hero.radius * 0.7],
-    [hero.radius * 0.7, -hero.radius * 0.7],
-    [-hero.radius * 0.7, -hero.radius * 0.7],
-  ]
-
-  return samples.some(([offsetX, offsetY]) => {
-    const px = clamp(Math.round(x + offsetX), 0, ROOM_WIDTH - 1)
-    const py = clamp(Math.round(y + offsetY), 0, ROOM_HEIGHT - 1)
-    return solidPixels.has(`${px}|${py}`)
-  })
-}
+const collides = () => false
 
 const updateHero = (delta: number) => {
   let dirX = 0
