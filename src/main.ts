@@ -237,13 +237,13 @@ const sceneObjects: SceneObject[] = [
 const hero: Hero = {
   sprite: heroAnimation,
   x: 128,
-  y: 190,
+  y: 180,
   anchor: 'bottom',
   bobAmplitude: 0.6,
   bobSpeed: 0.004,
-  speed: 0.09,
+  speed: 0.16,
   moving: false,
-  radius: 6,
+  radius: 3,
 }
 
 const heroShadow: SceneObject = {
@@ -296,39 +296,74 @@ window.addEventListener('keyup', (event) => {
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value))
 
-interface Rect {
-  x: number
-  y: number
-  width: number
-  height: number
+const getTopLeft = (object: SceneObject, sprite: Sprite) => {
+  let originX = object.x
+  let originY = object.y
+
+  if (object.anchor === 'center') {
+    originX -= sprite.width / 2
+    originY -= sprite.height / 2
+  } else if (object.anchor === 'bottom') {
+    originY -= sprite.height
+  }
+
+  return { originX, originY }
 }
 
-const colliders: Rect[] = [
-  { x: 40, y: 88, width: 120, height: 52 }, // bed + headboard
-  { x: 28, y: 70, width: 60, height: 40 }, // jar shelf
-  { x: 172, y: 70, width: 56, height: 52 }, // right wall storage
-  { x: 90, y: 124, width: 80, height: 44 }, // central table
-  { x: 66, y: 170, width: 48, height: 22 }, // left bench
-  { x: 142, y: 170, width: 48, height: 22 }, // right bench
-  { x: 180, y: 162, width: 34, height: 34 }, // chest
-  { x: 32, y: 168, width: 32, height: 36 }, // crate
-]
+const solidPixels = new Set<string>()
+
+const registerCollider = (object: SceneObject) => {
+  const sprite = object.sprite
+  if (isAnimated(sprite)) return
+
+  const { originX, originY } = getTopLeft(object, sprite)
+  for (let row = 0; row < sprite.height; row += 1) {
+    const line = sprite.rows[row] ?? ''
+    for (let col = 0; col < sprite.width; col += 1) {
+      const key = line[col] ?? '.'
+      if (key === '.') continue
+      const worldX = Math.round(originX + col)
+      const worldY = Math.round(originY + row)
+      if (
+        worldX >= 0 &&
+        worldX < ROOM_WIDTH &&
+        worldY >= 0 &&
+        worldY < ROOM_HEIGHT
+      ) {
+        solidPixels.add(`${worldX}|${worldY}`)
+      }
+    }
+  }
+}
+
+sceneObjects.forEach(registerCollider)
 
 const heroBounds = {
-  minX: 36,
-  maxX: 220,
-  minY: 110,
-  maxY: 202,
+  minX: 20,
+  maxX: 236,
+  minY: 90,
+  maxY: 210,
 }
 
-const collides = (x: number, y: number) =>
-  colliders.some((rect) => {
-    const closestX = clamp(x, rect.x, rect.x + rect.width)
-    const closestY = clamp(y, rect.y, rect.y + rect.height)
-    const dx = x - closestX
-    const dy = y - closestY
-    return dx * dx + dy * dy < hero.radius * hero.radius
+const collides = (x: number, y: number) => {
+  const samples = [
+    [0, 0],
+    [hero.radius, 0],
+    [-hero.radius, 0],
+    [0, hero.radius],
+    [0, -hero.radius],
+    [hero.radius * 0.7, hero.radius * 0.7],
+    [-hero.radius * 0.7, hero.radius * 0.7],
+    [hero.radius * 0.7, -hero.radius * 0.7],
+    [-hero.radius * 0.7, -hero.radius * 0.7],
+  ]
+
+  return samples.some(([offsetX, offsetY]) => {
+    const px = clamp(Math.round(x + offsetX), 0, ROOM_WIDTH - 1)
+    const py = clamp(Math.round(y + offsetY), 0, ROOM_HEIGHT - 1)
+    return solidPixels.has(`${px}|${py}`)
   })
+}
 
 const updateHero = (delta: number) => {
   let dirX = 0
